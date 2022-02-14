@@ -1,17 +1,23 @@
-1. Copy the work order from [BAG ROOT]/data/objects/metadata/transfer/[TRANSFER NAME]-[UUID]/*aspace_wo.tsv to TRANSFER ROOT
+1. Validate the existing bag
 
-2. Append the contents of [BAG ROOT]/data/objects/metadata/transfer/[TRANSFER NAME]-[UUID]/transfer-info.txt to bag-info.txt
+2. Copy the work order from [BAG ROOT]/data/objects/metadata/transfer/[TRANSFER NAME]-[UUID]/*aspace_wo.tsv to TRANSFER ROOT
 
-3. Append hostname "nyu-dl-hostname: [HOSTNAME]" to [BAG ROOT]/bag-info.txt
+3. Append the contents of [BAG ROOT]/data/objects/metadata/transfer/[TRANSFER NAME]-[UUID]/transfer-info.txt to bag-info.txt
 
-4. Append pathname "nyu-dl-pathname: [PATH OF BAG]" to [BAG ROOT]/bag-info.txt
+4. Check for missing keys in bag-info.txt
 
-5. Remove exisiting [BAG ROOT]/bag-info.txt from [BAG ROOT]/tagmanifest-sha256.txt
+5. Append hostname "nyu-dl-hostname: [HOSTNAME]" to [BAG ROOT]/bag-info.txt
 
-6. Add the sha256 of [BAG ROOT]/bag-info.txt to [BAG ROOT]/tagmanifest-sha256.txt
+6. Append pathname "nyu-dl-pathname: [PATH OF BAG]" to [BAG ROOT]/bag-info.txt
 
-7. Add the sha256 of [BAG ROOT]/work order to [BAG ROOT]/tagmanifest-sha256.txt
+7. Append uuid "nyu-dl-nyu-dl-rstar-collection-id: [UUID of collection in R*]", will use a terminal prompt until rsbe-client can support this.
 
-8. validate the [BAG ROOT]/tagmanifest-sha256.txt with sha256sum
+8. Remove exisiting [BAG ROOT]/bag-info.txt from [BAG ROOT]/tagmanifest-sha256.txt
 
-9. validate [BAG ROOT] with bagit
+9. Add the sha256 of [BAG ROOT]/bag-info.txt to [BAG ROOT]/tagmanifest-sha256.txt
+
+10. Add the sha256 of [BAG ROOT]/work order to [BAG ROOT]/tagmanifest-sha256.txt
+
+11. validate the [BAG ROOT]/tagmanifest-sha256.txt with sha256sum
+
+12. validate [BAG ROOT] with bagit
