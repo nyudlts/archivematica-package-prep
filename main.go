@@ -20,6 +20,7 @@ var (
 	uuidMatcher = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
 	woMatcher   = regexp.MustCompile("aspace_wo.tsv$")
 	tiMatcher   = regexp.MustCompile("transfer-info.txt")
+	version     = "0.1.0a"
 )
 
 func init() {
@@ -27,7 +28,7 @@ func init() {
 }
 
 func main() {
-
+	fmt.Println("Running Archivematica Package Prep version", version)
 	fi, err := os.Stat(bag)
 	if err != nil {
 		//do nothing for now
@@ -140,6 +141,30 @@ func main() {
 	path, err := filepath.Abs(bag)
 	b.WriteString(fmt.Sprintf("nyu-dl-pathname: %s\n", path))
 
+	//check for rstar collection id
+	result, err := keyExistsInManifest(baginfo, "nyu-dl-rstar-collection-id")
+	if err != nil {
+		panic(err)
+	}
+
+	if result != true {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter the rstar uuid: ")
+		rstarUUID, _ := reader.ReadString('\n')
+
+		if uuidMatcher.MatchString(rstarUUID) != true {
+			panic(fmt.Sprintf("%s is not a valid uuid", rstarUUID))
+		}
+
+		b.WriteString(fmt.Sprintf("nyu-dl-rstar-collection-id: %s", rstarUUID))
+		if err != nil {
+			panic(err)
+		}
+	}
+	b.Close()
+
+	updateTagFile(baginfo, "Bag-Software-Agent", go_bagit.GetSoftwareAgent())
+
 	//update the tagmanifest with new baginfo sha256
 	bFile, err := os.Open(baginfo)
 	if err != nil {
@@ -153,6 +178,9 @@ func main() {
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
 		panic(err)
 	}
+
+	fmt.Println("Package preparation complete")
+	os.Exit(0)
 }
 
 func getFilesInbag() {
@@ -205,5 +233,51 @@ func updateManifest(manifest string, file string, checksum string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func keyExistsInManifest(manifest string, key string) (bool, error) {
+	manifestFile, err := os.Open(manifest)
+	if err != nil {
+		return false, err
+	}
+	defer manifestFile.Close()
+
+	scanner := bufio.NewScanner(manifestFile)
+
+	r := regexp.MustCompile(key)
+	for scanner.Scan() {
+		if r.MatchString(scanner.Text()) == true {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func updateTagFile(tagfilePath string, key string, value string) error {
+	tagFile, err := os.Open(tagfilePath)
+	if err != nil {
+		return err
+	}
+
+	tagBuffer := ""
+	scanner := bufio.NewScanner(tagFile)
+	keyMatcher := regexp.MustCompile(key)
+	for scanner.Scan() {
+		if keyMatcher.MatchString(scanner.Text()) == true {
+			tagBuffer = tagBuffer + fmt.Sprintf("%s: %s\n", key, value)
+			continue
+		}
+
+		tagBuffer = tagBuffer + scanner.Text() + "\n"
+	}
+
+	tagFile.Close()
+
+	if err := ioutil.WriteFile(tagfilePath, []byte(tagBuffer), 0700); err != nil {
+		return err
+	}
+
 	return nil
 }
