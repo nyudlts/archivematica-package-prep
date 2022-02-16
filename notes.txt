@@ -10,9 +10,9 @@
 
 6. Check for missing keys in bag-info.txt
 
-7. Append hostname "nyu-dl-hostname: [HOSTNAME]" to [BAG ROOT]/bag-info.txt
+7. Append hostname "nyu-dl-hostname: [HOSTNAME]" to [BAG ROOT]/bag-info.txt ✓
 
-8. Append pathname "nyu-dl-pathname: [PATH OF BAG]" to [BAG ROOT]/bag-info.txt
+8. Append pathname "nyu-dl-pathname: [PATH OF BAG]" to [BAG ROOT]/bag-info.txt ✓
 
 9. Append uuid "nyu-dl-nyu-dl-rstar-collection-id: [UUID of collection in R*]", will use a terminal prompt until rsbe-client can support this.
 
@@ -24,4 +24,4 @@
 
 13. validate the [BAG ROOT]/tagmanifest-sha256.txt with sha256sum
 
-14. validate [BAG ROOT] with bagit
+14. validate [BAG ROOT] with bagit ✓

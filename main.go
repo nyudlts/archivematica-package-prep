@@ -126,8 +126,24 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer b.Close()
 	b.Write(tiBytes)
-	b.Close()
+
+	//append the hostname to bag-info.txt
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	b.WriteString(fmt.Sprintf("nyu-dl-hostname: %s\n", hostname))
+
+	//append the pathname
+	path, err := filepath.Abs(bag)
+	if err != nil {
+		panic(err)
+	}
+	base := filepath.Base(path)
+	pathToBag := path[:len(path)-(len(base)+1)]
+	b.WriteString(fmt.Sprintf("nyu-dl-pathname: %s\n", pathToBag))
 
 	//update the tagmanifest with new baginfo sha256
 	bFile, err := os.Open(baginfo)
