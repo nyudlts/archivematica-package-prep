@@ -138,12 +138,7 @@ func main() {
 
 	//append the pathname
 	path, err := filepath.Abs(bag)
-	if err != nil {
-		panic(err)
-	}
-	base := filepath.Base(path)
-	pathToBag := path[:len(path)-(len(base)+1)]
-	b.WriteString(fmt.Sprintf("nyu-dl-pathname: %s\n", pathToBag))
+	b.WriteString(fmt.Sprintf("nyu-dl-pathname: %s\n", path))
 
 	//update the tagmanifest with new baginfo sha256
 	bFile, err := os.Open(baginfo)
