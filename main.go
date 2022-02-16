@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	go_bagit "github.com/nyudlts/go-bagit"
@@ -18,6 +19,7 @@ var (
 	bagFiles    = []string{}
 	uuidMatcher = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
 	woMatcher   = regexp.MustCompile("aspace_wo.tsv$")
+	tiMatcher   = regexp.MustCompile("transfer-info.txt")
 )
 
 func init() {
@@ -67,7 +69,7 @@ func main() {
 	getFilesInbag()
 
 	//find the workorder
-	woPath, err := getWorkOrderPath()
+	woPath, err := findFileInBag(woMatcher)
 	if err != nil {
 		panic(err)
 	}
@@ -108,6 +110,34 @@ func main() {
 		panic(err)
 	}
 
+	//get the transfer-info.txt
+	transferInfoPath, err := findFileInBag(tiMatcher)
+	if err != nil {
+		panic(err)
+	}
+
+	//append the contents of transfer-info.txt to bag-info.txt
+	tiBytes, err := ioutil.ReadFile(transferInfoPath)
+	if err != nil {
+		panic(err)
+	}
+	baginfo := filepath.Join(bag, "bag-info.txt")
+	b, err := os.OpenFile(baginfo, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	b.Write(tiBytes)
+	b.Close()
+
+	//update the tagmanifest with new baginfo sha256
+	bFile, err := os.Open(baginfo)
+	if err != nil {
+		panic(err)
+	}
+	checksum, err = go_bagit.GenerateChecksum(bFile, "sha256")
+	bFile.Close()
+	err = updateManifest("tagmanifest-sha256.txt", "bag-info.txt", checksum)
+
 	//validate the bag
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
 		panic(err)
@@ -129,11 +159,40 @@ func getFilesInbag() {
 	}
 }
 
-func getWorkOrderPath() (string, error) {
+func findFileInBag(matcher *regexp.Regexp) (string, error) {
 	for _, p := range bagFiles {
-		if woMatcher.MatchString(p) {
+		if matcher.MatchString(p) {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf("Could not locate work order in bag")
+	return "", fmt.Errorf("Could not locate file pattern in bag")
+}
+
+func updateManifest(manifest string, file string, checksum string) error {
+	m := filepath.Join(bag, manifest)
+	mFile, err := os.Open(m)
+	if err != nil {
+		return err
+	}
+	defer mFile.Close()
+	scanner := bufio.NewScanner(mFile)
+	lines := ""
+	fileMatcher := regexp.MustCompile(file)
+	for scanner.Scan() {
+		if fileMatcher.MatchString(scanner.Text()) == false {
+			lines = lines + scanner.Text() + "\n"
+		}
+	}
+	lines = lines + fmt.Sprintf("%s %s\n", checksum, file)
+
+	err = os.Remove(m)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(m, []byte(lines), 0777)
+	if err != nil {
+		return err
+	}
+	return nil
 }
