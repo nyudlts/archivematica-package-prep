@@ -6,8 +6,6 @@ import (
 	"fmt"
 	go_bagit "github.com/nyudlts/go-bagit"
 	cp "github.com/otiai10/copy"
-	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,10 +19,12 @@ var (
 	woMatcher   = regexp.MustCompile("aspace_wo.tsv$")
 	tiMatcher   = regexp.MustCompile("transfer-info.txt")
 	version     = "0.1.0a"
+	rstarID     string
 )
 
 func init() {
 	flag.StringVar(&input, "input", "", "location of bag")
+	flag.StringVar(&rstarID, "rstar-id", "", "rstar id of the collection")
 }
 
 func main() {
@@ -66,113 +66,89 @@ func main() {
 		panic(err)
 	}
 
-	//create a slice of files in the bag
-	getFilesInbag()
-
 	//find the workorder
-	woPath, err := findFileInBag(woMatcher)
+	woPath, err := go_bagit.FindFileInBag(bag, woMatcher)
 	if err != nil {
 		panic(err)
 	}
 
-	//copy the work order to the root of the bag
-	woName := filepath.Base(woPath)
-	newWoLoc := filepath.Join(bag, woName)
-	woBytes, err := ioutil.ReadFile(woPath)
-	if err != nil {
-		panic(err)
-	}
-	err = ioutil.WriteFile(newWoLoc, woBytes, 0777)
-	if err != nil {
-		panic(err)
-	}
-
-	//get the sha256 of the work order
-	wo, err := os.Open(newWoLoc)
-	if err != nil {
-		panic(err)
-	}
-	defer wo.Close()
-
-	checksum, err := go_bagit.GenerateChecksum(wo, "sha256")
-	if err != nil {
-		panic(err)
-	}
-
-	//append the checksum to the tagmanifest
-	tagManifest := filepath.Join(bag, "tagmanifest-sha256.txt")
-	f, err := os.OpenFile(tagManifest, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	_, err = f.WriteString(fmt.Sprintf("%s %s\n", checksum, woName))
-	if err != nil {
+	if err := go_bagit.AddFileToBag(bag, woPath); err != nil {
 		panic(err)
 	}
 
 	//get the transfer-info.txt
-	transferInfoPath, err := findFileInBag(tiMatcher)
+	transferInfoPath, err := go_bagit.FindFileInBag(bag, tiMatcher)
 	if err != nil {
 		panic(err)
 	}
 
-	//append the contents of transfer-info.txt to bag-info.txt
-	tiBytes, err := ioutil.ReadFile(transferInfoPath)
+	transferInfoPath = transferInfoPath[len(bag)+1:]
+	//Get the contents of transfer-info.txt
+	transferInfo, err := go_bagit.NewTagSet(transferInfoPath, bag)
 	if err != nil {
 		panic(err)
 	}
-	baginfo := filepath.Join(bag, "bag-info.txt")
-	b, err := os.OpenFile(baginfo, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer b.Close()
-	b.Write(tiBytes)
 
 	//append the hostname to bag-info.txt
 	hostname, err := os.Hostname()
 	if err != nil {
 		panic(err)
 	}
-	b.WriteString(fmt.Sprintf("nyu-dl-hostname: %s\n", hostname))
+	transferInfo.Tags["nyu-dl-hostname"] = hostname
 
 	//append the pathname
 	path, err := filepath.Abs(bag)
-	b.WriteString(fmt.Sprintf("nyu-dl-pathname: %s\n", path))
+	if err != nil {
+		panic(err)
+	}
+	transferInfo.Tags["nyu-dl-pathname"] = path
+
+	bagInfo, err := go_bagit.NewTagSet("bag-info.txt", bag)
 
 	//check for rstar collection id
-	result, err := keyExistsInManifest(baginfo, "nyu-dl-rstar-collection-id")
+	if bagInfo.HasTag("nyu-dl-rstar-collection-id") != true {
+		//check if the rstarID is set
+		if rstarID == "" {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Enter the rstar uuid: ")
+			rstarID, err = reader.ReadString('\n')
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		//make sure there is a valid uuid
+		if uuidMatcher.MatchString(rstarID) != true {
+			panic(fmt.Sprintf("%s is not a valid uuid", rstarID))
+		}
+
+		transferInfo.Tags["nyu-dl-rstar-collection-id"] = rstarID
+	}
+
+	//update the software agent
+	transferInfo.Tags["Bag-Software-Agent"] = go_bagit.GetSoftwareAgent()
+
+	//update the tagmap
+	bagInfo.AddTags(transferInfo.Tags)
+
+	//write the new baginfo file
+	if err := bagInfo.Serialize(); err != nil {
+		panic(err)
+	}
+
+	//update the tag manifest
+	tagManifest, err := go_bagit.NewManifest(bag, "tagmanifest-sha256.txt")
 	if err != nil {
 		panic(err)
 	}
 
-	if result != true {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter the rstar uuid: ")
-		rstarUUID, _ := reader.ReadString('\n')
-
-		if uuidMatcher.MatchString(rstarUUID) != true {
-			panic(fmt.Sprintf("%s is not a valid uuid", rstarUUID))
-		}
-
-		b.WriteString(fmt.Sprintf("nyu-dl-rstar-collection-id: %s", rstarUUID))
-		if err != nil {
-			panic(err)
-		}
-	}
-	b.Close()
-
-	updateTagFile(baginfo, "Bag-Software-Agent", go_bagit.GetSoftwareAgent())
-
-	//update the tagmanifest with new baginfo sha256
-	bFile, err := os.Open(baginfo)
-	if err != nil {
+	if err := tagManifest.UpdateManifest("bag-info.txt"); err != nil {
 		panic(err)
 	}
-	checksum, err = go_bagit.GenerateChecksum(bFile, "sha256")
-	bFile.Close()
-	err = updateManifest("tagmanifest-sha256.txt", "bag-info.txt", checksum)
+
+	if err := tagManifest.Serialize(); err != nil {
+		panic(err)
+	}
 
 	//validate the bag
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
@@ -181,103 +157,4 @@ func main() {
 
 	fmt.Println("Package preparation complete")
 	os.Exit(0)
-}
-
-func getFilesInbag() {
-	err := filepath.Walk(bag, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() != true {
-			bagFiles = append(bagFiles, path)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Println(err)
-	}
-}
-
-func findFileInBag(matcher *regexp.Regexp) (string, error) {
-	for _, p := range bagFiles {
-		if matcher.MatchString(p) {
-			return p, nil
-		}
-	}
-	return "", fmt.Errorf("Could not locate file pattern in bag")
-}
-
-func updateManifest(manifest string, file string, checksum string) error {
-	m := filepath.Join(bag, manifest)
-	mFile, err := os.Open(m)
-	if err != nil {
-		return err
-	}
-	defer mFile.Close()
-	scanner := bufio.NewScanner(mFile)
-	lines := ""
-	fileMatcher := regexp.MustCompile(file)
-	for scanner.Scan() {
-		if fileMatcher.MatchString(scanner.Text()) == false {
-			lines = lines + scanner.Text() + "\n"
-		}
-	}
-	lines = lines + fmt.Sprintf("%s %s\n", checksum, file)
-
-	err = os.Remove(m)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(m, []byte(lines), 0777)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func keyExistsInManifest(manifest string, key string) (bool, error) {
-	manifestFile, err := os.Open(manifest)
-	if err != nil {
-		return false, err
-	}
-	defer manifestFile.Close()
-
-	scanner := bufio.NewScanner(manifestFile)
-
-	r := regexp.MustCompile(key)
-	for scanner.Scan() {
-		if r.MatchString(scanner.Text()) == true {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-func updateTagFile(tagfilePath string, key string, value string) error {
-	tagFile, err := os.Open(tagfilePath)
-	if err != nil {
-		return err
-	}
-
-	tagBuffer := ""
-	scanner := bufio.NewScanner(tagFile)
-	keyMatcher := regexp.MustCompile(key)
-	for scanner.Scan() {
-		if keyMatcher.MatchString(scanner.Text()) == true {
-			tagBuffer = tagBuffer + fmt.Sprintf("%s: %s\n", key, value)
-			continue
-		}
-
-		tagBuffer = tagBuffer + scanner.Text() + "\n"
-	}
-
-	tagFile.Close()
-
-	if err := ioutil.WriteFile(tagfilePath, []byte(tagBuffer), 0700); err != nil {
-		return err
-	}
-
-	return nil
 }
