@@ -5,54 +5,35 @@ import (
 	"flag"
 	"fmt"
 	go_bagit "github.com/nyudlts/go-bagit"
-	cp "github.com/otiai10/copy"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 )
 
 var (
-	input       string
-	bag         = "test-bag-copy"
-	bagFiles    = []string{}
-	uuidMatcher = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
-	woMatcher   = regexp.MustCompile("aspace_wo.tsv$")
-	tiMatcher   = regexp.MustCompile("transfer-info.txt")
-	version     = "0.1.0a"
-	rstarID     string
+	bag          string
+	bagFiles     = []string{}
+	rstarID      string
+	copyLocation string
+	uuidMatcher  = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+	woMatcher    = regexp.MustCompile("aspace_wo.tsv$")
+	tiMatcher    = regexp.MustCompile("transfer-info.txt")
+	version      = "0.1.0a"
 )
 
 func init() {
-	flag.StringVar(&input, "input", "", "location of bag")
+	flag.StringVar(&bag, "bag", "", "location of bag")
 	flag.StringVar(&rstarID, "rstar-id", "", "rstar id of the collection")
+	flag.StringVar(&copyLocation, "copy-location", "", "location to copy the bag before processing")
 }
 
 func main() {
 	fmt.Println("Running Archivematica Package Prep version", version)
-	fi, err := os.Stat(bag)
-	if err != nil {
-		//do nothing for now
-	} else {
-		if fi.IsDir() {
-			err := os.RemoveAll(bag)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-
 	flag.Parse()
-	// resolve any symlinks
-	inputPath, err := filepath.EvalSymlinks(input)
-	if err != nil {
-		panic(err)
-	}
-
-	//copy the bag (for dev purposes)
-	err = cp.Copy(inputPath, "test-bag-copy")
 
 	//ensure that the bag exists and is a directory
-	fi, err = os.Stat(bag)
+	fi, err := os.Stat(bag)
 	if err != nil {
 		panic(err)
 	}
@@ -61,6 +42,39 @@ func main() {
 		panic(fmt.Errorf("Location provided is not a directory"))
 	}
 
+	if copyLocation != "" {
+
+		//if the copy location exists, delete it
+		fi, err := os.Stat(copyLocation)
+		if err != nil {
+			//do nothing for now
+		} else {
+			if fi.IsDir() {
+				err := os.RemoveAll(copyLocation)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+
+		// resolve any symlinks
+		inputPath, err := filepath.EvalSymlinks(bag)
+		if err != nil {
+			panic(err)
+		}
+
+		//copy the directory
+		cmd := exec.Command("cp", "-r", inputPath, copyLocation)
+		_, err = cmd.Output()
+		if err != nil {
+			panic(err)
+		}
+
+		//use the copy of the bag
+		bag = copyLocation
+	}
+
+	fmt.Println("Proccessing Bag at: ", bag)
 	//validate the copied bag
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
 		panic(err)
