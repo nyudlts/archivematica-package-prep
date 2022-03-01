@@ -159,6 +159,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	path, err = filepath.EvalSymlinks(path)
+	if err != nil {
+		panic(err)
+	}
+
 	transferInfo.Tags["nyu-dl-pathname"] = path
 	fmt.Printf("OK\n")
 
