@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const version string = "0.2.0a"
+
 var (
 	bag          string
 	bagFiles     = []string{}
@@ -18,7 +20,6 @@ var (
 	uuidMatcher  = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
 	woMatcher    = regexp.MustCompile("aspace_wo.tsv$")
 	tiMatcher    = regexp.MustCompile("transfer-info.txt")
-	version      = "0.1.0a"
 	pause        = 500 * time.Millisecond
 )
 
@@ -33,8 +34,9 @@ func main() {
 	flag.Parse()
 
 	time.Sleep(pause)
-	//ensure that the bag exists and is a directory
 
+	//ensure that the bag exists and is a directory
+	fmt.Println("Performing preliminary checks: ")
 	fmt.Print("  Checking that bag location exists: ")
 	fi, err := os.Stat(bag)
 	if err != nil {
@@ -94,16 +96,16 @@ func main() {
 		bag = copyLocation
 	}
 
-	time.Sleep(pause)
-	fmt.Println("Updating bag at: ", bag)
-
 	//validate the copied bag
 	time.Sleep(pause)
-	fmt.Printf("  Validating bag at %s: ", bag)
+	fmt.Printf("Validating bag at %s: ", bag)
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
+
+	time.Sleep(pause)
+	fmt.Println("Updating bag at: ", bag)
 
 	time.Sleep(pause)
 	fmt.Printf("  Locating work order: ")
@@ -238,7 +240,7 @@ func main() {
 
 	//validate the bag
 	time.Sleep(pause)
-	fmt.Printf("  Validating the updated bag: ")
+	fmt.Printf("Validating the updated bag: ")
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
 		panic(err)
 	}
