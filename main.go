@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	go_bagit "github.com/nyudlts/go-bagit"
@@ -15,7 +14,6 @@ import (
 var (
 	bag          string
 	bagFiles     = []string{}
-	rstarID      string
 	copyLocation string
 	uuidMatcher  = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
 	woMatcher    = regexp.MustCompile("aspace_wo.tsv$")
@@ -26,7 +24,6 @@ var (
 
 func init() {
 	flag.StringVar(&bag, "bag", "", "location of bag")
-	flag.StringVar(&rstarID, "rstar-id", "", "rstar id of the collection")
 	flag.StringVar(&copyLocation, "copy-location", "", "location to copy the bag before processing")
 }
 
@@ -37,6 +34,7 @@ func main() {
 
 	time.Sleep(pause)
 	//ensure that the bag exists and is a directory
+
 	fmt.Print("  Checking that bag location exists: ")
 	fi, err := os.Stat(bag)
 	if err != nil {
@@ -110,6 +108,7 @@ func main() {
 	time.Sleep(pause)
 	fmt.Printf("  Locating work order: ")
 	//find the workorder
+
 	woPath, err := go_bagit.FindFileInBag(bag, woMatcher)
 	if err != nil {
 		panic(err)
@@ -134,7 +133,7 @@ func main() {
 
 	time.Sleep(pause)
 	fmt.Printf("  Creating new tag set from %s: ", transferInfoPath)
-	transferInfoPath = transferInfoPath[len(bag)+1:]
+	transferInfoPath = transferInfoPath[len(bag):]
 	//Get the contents of transfer-info.txt
 	transferInfo, err := go_bagit.NewTagSet(transferInfoPath, bag)
 	if err != nil {
@@ -169,34 +168,21 @@ func main() {
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	fmt.Printf("  Checking for R* ID")
-	//check for rstar collection id
-	if transferInfo.HasTag("nyu-dl-rstar-collection-id") != true {
-		//check if the rstarID is set
-		if rstarID == "" {
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Print("    Enter the collections rstar uuid: ")
-			rstarID, err = reader.ReadString('\n')
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			fmt.Printf(": OK\n")
-		}
-	} else {
-		fmt.Printf(": OK\n")
+	rstarUUID, err := GetRStarUUID(transferInfo.Tags["Internal-Sender-Identifier"])
+	if err != nil {
+		panic(err)
 	}
 
 	time.Sleep(pause)
 	fmt.Printf("  Validating R* ID: ")
-	if uuidMatcher.MatchString(rstarID) != true {
-		panic(fmt.Sprintf("%s is not a valid uuid", rstarID))
+	if uuidMatcher.MatchString(rstarUUID) != true {
+		panic(fmt.Sprintf("%s is not a valid uuid", rstarUUID))
 	}
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
 	fmt.Printf("  Adding R* ID to Tag Set:")
-	transferInfo.Tags["nyu-dl-rstar-collection-id"] = rstarID
+	transferInfo.Tags["nyu-dl-rstar-collection-id"] = rstarUUID
 	fmt.Printf("OK\n")
 	time.Sleep(pause)
 	fmt.Printf("  Updating Software Agent in Tag Set\n")
@@ -259,5 +245,6 @@ func main() {
 	fmt.Printf("OK\n")
 
 	fmt.Println("Package preparation complete")
+	fmt.Print("\a")
 	os.Exit(0)
 }
