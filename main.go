@@ -170,7 +170,7 @@ func main() {
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	rstarUUID, err := GetRStarUUID(transferInfo.Tags["Internal-Sender-Identifier"])
+	rstarUUID, err := getRStarUUID(transferInfo.Tags["Internal-Sender-Identifier"])
 	if err != nil {
 		panic(err)
 	}

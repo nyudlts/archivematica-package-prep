@@ -18,9 +18,10 @@ var (
 type Secrets struct {
 	RSTAR_RO_USER     string
 	RSTAR_RO_PASSWORD string
+	RSTAR_URI         string
 }
 
-func GetRStarUUID(partnerCall string) (string, error) {
+func getRStarUUID(partnerCall string) (string, error) {
 
 	partner, coll := getPartnerAndCall(partnerCall)
 
@@ -29,6 +30,8 @@ func GetRStarUUID(partnerCall string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	fmt.Printf("%v\n", secrets)
 
 	partnerUUID, err := getPartnerUUID(partner)
 	if err != nil {
@@ -44,7 +47,7 @@ func GetRStarUUID(partnerCall string) (string, error) {
 }
 
 func getPartnerUUID(partner string) (string, error) {
-	endpoint := fmt.Sprintf("https://rsbe.dlib.nyu.edu/api/v0/partners?code=%s", partner)
+	endpoint := fmt.Sprintf("/partners?code=%s", partner)
 	bodyJson, err := httpRequest(endpoint)
 	if err != nil {
 		return "", err
@@ -54,7 +57,7 @@ func getPartnerUUID(partner string) (string, error) {
 }
 
 func getCollUUID(partnerUUID string, coll string) (string, error) {
-	endpoint := fmt.Sprintf("https://rsbe.dlib.nyu.edu/api/v0/partners/%s/colls?code=%s", partnerUUID, coll)
+	endpoint := fmt.Sprintf("/partners/%s/colls?code=%s", partnerUUID, coll)
 	bodyJson, err := httpRequest(endpoint)
 	if err != nil {
 		return "", err
@@ -63,8 +66,8 @@ func getCollUUID(partnerUUID string, coll string) (string, error) {
 	return m[0]["id"], nil
 }
 
-func httpRequest(url string) (*[]map[string]string, error) {
-
+func httpRequest(endpoint string) (*[]map[string]string, error) {
+	url := fmt.Sprintf("%s%s", secrets.RSTAR_URI, endpoint)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -111,6 +114,10 @@ func readSecretsFile() (*Secrets, error) {
 
 		if split[0] == "RSTAR_RO_PASSWORD" {
 			secrets.RSTAR_RO_PASSWORD = split[1]
+		}
+
+		if split[0] == "RSTAR_URI" {
+			secrets.RSTAR_URI = split[1]
 		}
 	}
 
