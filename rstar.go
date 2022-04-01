@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
@@ -21,29 +22,33 @@ type Secrets struct {
 	RSTAR_URI         string
 }
 
-func getRStarUUID(partnerCall string) (string, error) {
+func getRStarUUID(partnerCall string) (*string, error) {
 
 	partner, coll := getPartnerAndCall(partnerCall)
 
 	var err error
 	secrets, err = readSecretsFile()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	fmt.Printf("%v\n", secrets)
 
 	partnerUUID, err := getPartnerUUID(partner)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	collUUID, err := getCollUUID(partnerUUID, coll)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return collUUID, nil
+	time.Sleep(pause)
+	fmt.Printf("  Validating R* ID: ")
+	if uuidMatcher.MatchString(collUUID) != true {
+		return nil, fmt.Errorf("%s is not a valid uuid", collUUID)
+	}
+
+	return &collUUID, nil
 }
 
 func getPartnerUUID(partner string) (string, error) {

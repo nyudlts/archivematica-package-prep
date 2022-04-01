@@ -169,22 +169,18 @@ func main() {
 	transferInfo.Tags["nyu-dl-pathname"] = path
 	fmt.Printf("OK\n")
 
+	//request and validate the RSTAR UUID for the partner/collection
 	time.Sleep(pause)
+	fmt.Printf("  Requesting routing uuid from RSBE: ")
 	rstarUUID, err := getRStarUUID(transferInfo.Tags["Internal-Sender-Identifier"])
 	if err != nil {
 		panic(err)
-	}
-
-	time.Sleep(pause)
-	fmt.Printf("  Validating R* ID: ")
-	if uuidMatcher.MatchString(rstarUUID) != true {
-		panic(fmt.Sprintf("%s is not a valid uuid", rstarUUID))
 	}
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
 	fmt.Printf("  Adding R* ID to Tag Set:")
-	transferInfo.Tags["nyu-dl-rstar-collection-id"] = rstarUUID
+	transferInfo.Tags["nyu-dl-rstar-collection-id"] = *rstarUUID
 	fmt.Printf("OK\n")
 	time.Sleep(pause)
 	fmt.Printf("  Updating Software Agent in Tag Set\n")
