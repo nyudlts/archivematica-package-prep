@@ -4,28 +4,29 @@ import (
 	"flag"
 	"fmt"
 	go_bagit "github.com/nyudlts/go-bagit"
+	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 )
 
-const version string = "0.2.0a"
+const version string = "0.2.1a"
 
 var (
-	bag          string
-	bagFiles     = []string{}
-	copyLocation string
-	uuidMatcher  = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
-	woMatcher    = regexp.MustCompile("aspace_wo.tsv$")
-	tiMatcher    = regexp.MustCompile("transfer-info.txt")
-	pause        = 500 * time.Millisecond
+	bag         string
+	bagFiles    = []string{}
+	tmpLocation = "/var/archivematica/ampp/tmp/"
+	tmpBagDir   string
+	uuidMatcher = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+	woMatcher   = regexp.MustCompile("aspace_wo.tsv$")
+	tiMatcher   = regexp.MustCompile("transfer-info.txt")
+	pause       = 500 * time.Millisecond
 )
 
 func init() {
 	flag.StringVar(&bag, "bag", "", "location of bag")
-	flag.StringVar(&copyLocation, "copy-location", "", "location to copy the bag before processing")
 }
 
 func main() {
@@ -36,89 +37,55 @@ func main() {
 	time.Sleep(pause)
 
 	//ensure that the bag exists and is a directory
-	fmt.Println("Performing preliminary checks: ")
-	fmt.Print("  Checking that bag location exists: ")
+	fmt.Println("\nPerforming preliminary checks: ")
+	fmt.Print("  * Checking that bag location exists: ")
 	fi, err := os.Stat(bag)
 	if err != nil {
-		panic(err)
+		log.Fatal(err.Error())
 	}
 	fmt.Print("OK\n")
 
+	//check that
 	time.Sleep(pause)
-	fmt.Print("  Checking that bag location is a directory: ")
+	fmt.Print("  * Checking that bag location is a directory: ")
 	if fi.IsDir() != true {
-		panic(fmt.Errorf("Location provided is not a directory"))
+		log.Fatal(fmt.Errorf("Location provided is not a directory"))
 	}
 	fmt.Print("OK\n")
 
-	if copyLocation != "" {
-		time.Sleep(pause)
-		fmt.Printf("Copying %s to %s\n", bag, copyLocation)
-		//if the copy location exists, delete it
-
-		time.Sleep(pause)
-		fmt.Printf("  Checking if %s exists: ", copyLocation)
-		fi, err := os.Stat(copyLocation)
-		if err != nil {
-			fmt.Printf("OK\n")
-		} else {
-			fmt.Printf("OK\n")
-			if fi.IsDir() {
-				time.Sleep(pause)
-				fmt.Printf("  Removing directory at %s: ", copyLocation)
-				err := os.RemoveAll(copyLocation)
-				if err != nil {
-					panic(err)
-				}
-				fmt.Printf("OK\n")
-			}
-		}
-
-		// resolve any symlinks
-		time.Sleep(pause)
-		fmt.Printf("  Resolving any symlinks: ")
-		inputPath, err := filepath.EvalSymlinks(bag)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("OK\n")
-
-		//copy the directory
-		time.Sleep(pause)
-		fmt.Printf("  Copying bag to copy location: ")
-		cmd := exec.Command("cp", "-r", inputPath, copyLocation)
-		_, err = cmd.Output()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("OK\n")
-		//use the copy of the bag
-		bag = copyLocation
-	}
-
-	//validate the copied bag
+	//validate the bag
 	time.Sleep(pause)
-	fmt.Printf("Validating bag at %s: ", bag)
+	fmt.Printf("  * Validating bag at %s: ", bag)
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
-		panic(err)
+		log.Fatal(err.Error())
 	}
 	fmt.Printf("OK\n")
 
+	//create the tmp directory
 	time.Sleep(pause)
-	fmt.Println("Updating bag at: ", bag)
+	tmpBagDir = filepath.Join(tmpLocation, bag)
+	fmt.Printf("  * Creating temp dir at %s: ", tmpBagDir)
+	err = os.Mkdir(tmpBagDir, 0777)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	fmt.Print("OK\n")
 
+	//start the update phase
 	time.Sleep(pause)
-	fmt.Printf("  Locating work order: ")
-	//find the workorder
+	fmt.Println("\nUpdating bag at: ", bag)
 
+	//move the work order to bag root and add to tag manifest
+	time.Sleep(pause)
+	fmt.Printf("  * Locating work order: ")
 	woPath, err := go_bagit.FindFileInBag(bag, woMatcher)
 	if err != nil {
-		panic(err)
+		log.Fatal(err.Error())
 	}
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	fmt.Printf("  Moving work order to bag's root :")
+	fmt.Printf("  * Moving work order to bag's root ")
 	if err := go_bagit.AddFileToBag(bag, woPath); err != nil {
 		panic(err)
 	}
@@ -126,26 +93,27 @@ func main() {
 
 	//get the transfer-info.txt
 	time.Sleep(pause)
-	fmt.Printf("  Locating transfer-info.txt: ")
+	fmt.Printf("  * Locating transfer-info.txt: ")
 	transferInfoPath, err := go_bagit.FindFileInBag(bag, tiMatcher)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
+	transferInfoPath = strings.ReplaceAll(transferInfoPath, bag, "")
+
+	//create a tag set from transfer-info.txt
 	time.Sleep(pause)
-	fmt.Printf("  Creating new tag set from %s: ", transferInfoPath)
-	transferInfoPath = transferInfoPath[len(bag):]
-	//Get the contents of transfer-info.txt
+	fmt.Printf("  * Creating new tag set from %s: ", transferInfoPath)
 	transferInfo, err := go_bagit.NewTagSet(transferInfoPath, bag)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
+	//Update the hostname
 	time.Sleep(pause)
-	fmt.Printf("  Adding hostname to tag set: ")
-	//append the hostname to bag-info.txt
+	fmt.Printf("  * Adding hostname to tag set: ")
 	hostname, err := os.Hostname()
 	if err != nil {
 		panic(err)
@@ -153,96 +121,76 @@ func main() {
 	transferInfo.Tags["nyu-dl-hostname"] = hostname
 	fmt.Printf("OK\n")
 
+	//add pathname to the tag-set
 	time.Sleep(pause)
-	fmt.Printf("  Adding bag's path to tag set: ")
-	//append the pathname
+	fmt.Printf("  * Adding bag's path to tag set: ")
 	path, err := filepath.Abs(bag)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
 	path, err = filepath.EvalSymlinks(path)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
 	transferInfo.Tags["nyu-dl-pathname"] = path
 	fmt.Printf("OK\n")
 
-	//request and validate the RSTAR UUID for the partner/collection
+	//getting tagset from bag-info
 	time.Sleep(pause)
-	fmt.Printf("  Requesting routing uuid from RSBE: ")
-	rstarUUID, err := getRStarUUID(transferInfo.Tags["Internal-Sender-Identifier"])
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("OK\n")
-
-	time.Sleep(pause)
-	fmt.Printf("  Adding R* ID to Tag Set:")
-	transferInfo.Tags["nyu-dl-rstar-collection-id"] = *rstarUUID
-	fmt.Printf("OK\n")
-	time.Sleep(pause)
-	fmt.Printf("  Updating Software Agent in Tag Set\n")
-	//update the software agent
-	transferInfo.Tags["Bag-Software-Agent"] = go_bagit.GetSoftwareAgent()
-
 	bagInfoLocation := filepath.Join(bag, "bag-info.txt")
-	//Get a tag set for bag-info.txt
-	time.Sleep(pause)
-	fmt.Printf("  Creating new tag set from %s: ", bagInfoLocation)
+	fmt.Printf("  * Creating new tag set from %s: ", bagInfoLocation)
 	bagInfo, err := go_bagit.NewTagSet("bag-info.txt", bag)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
+	//merge tagsets
 	time.Sleep(pause)
-	fmt.Printf("  Merging Tag Sets: ")
-	//update the tagmap
+	fmt.Printf("  * Merging Tag Sets: ")
 	bagInfo.AddTags(transferInfo.Tags)
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	fmt.Printf("  Rewriting bag-info.txt with updated tag set: ")
+	fmt.Printf("  * Rewriting bag-info.txt with updated tag set: ")
 	//write the new baginfo file
 	if err := bagInfo.Serialize(); err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
-	//update the tag manifest
+	//create new manifest object for tagmanifest-sha256.txt
 	time.Sleep(pause)
-	fmt.Printf("  Creating new manifest for tagmanifest-sha256.txt: ")
+	fmt.Printf("  * Creating new manifest for tagmanifest-sha256.txt: ")
 	tagManifest, err := go_bagit.NewManifest(bag, "tagmanifest-sha256.txt")
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
+	//update the checksum for bag-info.txt
 	time.Sleep(pause)
-	fmt.Printf("  Updating checksum for bag-info.txt in tagmanifest-sha256.txt: ")
+	fmt.Printf("  * Updating checksum for bag-info.txt in tagmanifest-sha256.txt: ")
 	if err := tagManifest.UpdateManifest("bag-info.txt"); err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	fmt.Printf("  Rewriting tagmanifest-sha256.txt: ")
+	fmt.Printf("  * Rewriting tagmanifest-sha256.txt: ")
 	if err := tagManifest.Serialize(); err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
-	//validate the bag
+	//validate the updated bag
 	time.Sleep(pause)
-	fmt.Printf("Validating the updated bag: ")
+	fmt.Printf("\nValidating the updated bag: ")
 	if err := go_bagit.ValidateBag(bag, false, false); err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
 
-	fmt.Println("Package preparation complete")
-	fmt.Print("\a")
+	fmt.Println("\nPackage preparation complete")
 	os.Exit(0)
 }
