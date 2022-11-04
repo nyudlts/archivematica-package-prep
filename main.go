@@ -61,6 +61,7 @@ func main() {
 	}
 	fmt.Printf("OK\n")
 
+	/* taking this out for now
 	//create the tmp directory
 	time.Sleep(pause)
 	tmpBagDir = filepath.Join(tmpLocation, bag)
@@ -70,6 +71,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	fmt.Print("OK\n")
+	*/
 
 	//start the update phase
 	time.Sleep(pause)
