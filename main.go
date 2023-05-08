@@ -163,7 +163,17 @@ func main() {
 	time.Sleep(pause)
 	fmt.Printf("  * Rewriting bag-info.txt with updated tag set: ")
 	//write the new baginfo file
-	if err := bagInfo.Serialize(); err != nil {
+	fmt.Printf("  * Getting data as byte array: ")
+	bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
+	fmt.Println(string(bagInfoBytes))
+	fmt.Printf("OK\n")
+	fmt.Printf("  * Removing bag-info.txt: ")
+	if err := os.Remove(bagInfoLocation); err != nil {
+		panic(err)
+	}
+	fmt.Printf("OK\n")
+	fmt.Printf("  * Rewriting bag-info.txt: ")
+	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0775); err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
