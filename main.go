@@ -62,18 +62,6 @@ func main() {
 	}
 	fmt.Printf("OK\n")
 
-	/* taking this out for now
-	//create the tmp directory
-	time.Sleep(pause)
-	tmpBagDir = filepath.Join(tmpLocation, bag)
-	fmt.Printf("  * Creating temp dir at %s: ", tmpBagDir)
-	err = os.Mkdir(tmpBagDir, 0777)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	fmt.Print("OK\n")
-	*/
-
 	//start the update phase
 	time.Sleep(pause)
 	fmt.Println("\nUpdating bag at: ", bag)
@@ -102,7 +90,6 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
-
 	transferInfoPath = strings.ReplaceAll(transferInfoPath, bag, "")
 
 	//create a tag set from transfer-info.txt
