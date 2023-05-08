@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	go_bagit "github.com/nyudlts/go-bagit"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -137,9 +138,28 @@ func main() {
 	transferInfo.Tags["nyu-dl-pathname"] = path
 	fmt.Printf("OK\n")
 
-	//getting tagset from bag-info
 	time.Sleep(pause)
 	bagInfoLocation := filepath.Join(bag, "bag-info.txt")
+	//backup bag-info
+	backupLocation := filepath.Join("/var/archivematica/tmp", "bag-info.txt")
+	backup, err := os.Create(backupLocation)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer backup.Close()
+
+	source, err := os.Open(bagInfoLocation)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer source.Close()
+
+	_, err = io.Copy(backup, source)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//getting tagset from bag-info
 	fmt.Printf("  * Creating new tag set from %s: ", bagInfoLocation)
 	bagInfo, err := go_bagit.NewTagSet("bag-info.txt", bag)
 	if err != nil {
