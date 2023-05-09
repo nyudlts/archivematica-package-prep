@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	go_bagit "github.com/nyudlts/go-bagit"
@@ -167,13 +168,26 @@ func main() {
 	bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
 	fmt.Println(string(bagInfoBytes))
 	fmt.Printf("OK\n")
-	fmt.Printf("  * Removing bag-info.txt: ")
+	/*fmt.Printf("  * Removing bag-info.txt: ")
 	if err := os.Remove(bagInfoLocation); err != nil {
 		panic(err)
 	}
-	fmt.Printf("OK\n")
+	fmt.Printf("OK\n")*/
+	bagInfoFile, err := os.Open(bagInfoLocation)
+	if err != nil {
+		panic(err)
+	}
+	defer bagInfoFile.Close()
+	if err := bagInfoFile.Truncate; err != nil {
+		panic(err)
+	}
+
+	writer := bufio.NewWriter(bagInfoFile)
+	writer.Write(bagInfoBytes)
+	writer.Flush()
+
 	fmt.Printf("  * Rewriting bag-info.txt: ")
-	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0775); err != nil {
+	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
 		panic(err)
 	}
 	fmt.Printf("OK\n")
