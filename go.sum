@@ -1,2 +1,4 @@
 github.com/nyudlts/go-bagit v0.2.1-alpha h1:a7dowfeKBZK4a/qT/rz7dV5rnmWs+TmhN7iwjoVKeZU=
 github.com/nyudlts/go-bagit v0.2.1-alpha/go.mod h1:W9m2WmCtv7IRASziKJ/8tqVCkIU8ffe7QecZCRtqGy0=
+github.com/nyudlts/go-bagit v0.2.1-alpha.0.20230509135017-47630ffab83d h1:TWRm2p2fCh6xgZisANXH7bEc4IlVCMQtlEhC1IpG5V4=
+github.com/nyudlts/go-bagit v0.2.1-alpha.0.20230509135017-47630ffab83d/go.mod h1:W9m2WmCtv7IRASziKJ/8tqVCkIU8ffe7QecZCRtqGy0=
