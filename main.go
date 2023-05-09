@@ -162,35 +162,45 @@ func main() {
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	fmt.Printf("  * Rewriting bag-info.txt with updated tag set: ")
+	fmt.Println("  * Rewriting bag-info.txt with updated tag set: ")
 	//write the new baginfo file
 	fmt.Printf("  * Getting data as byte array: ")
 	bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
 	fmt.Println(string(bagInfoBytes))
 	fmt.Printf("OK\n")
-	/*fmt.Printf("  * Removing bag-info.txt: ")
-	if err := os.Remove(bagInfoLocation); err != nil {
-		panic(err)
-	}
-	fmt.Printf("OK\n")*/
+	/*
+		fmt.Printf("  * Removing bag-info.txt: ")
+		if err := os.Remove(bagInfoLocation); err != nil {
+			panic(err)
+		}
+	*/
+
+	fmt.Printf("  * Opening bag-info.txt: ")
 	bagInfoFile, err := os.Open(bagInfoLocation)
 	if err != nil {
 		panic(err)
 	}
 	defer bagInfoFile.Close()
+	fmt.Printf("OK\n")
+
+	fmt.Printf("  * bag-info.txt: ")
 	if err := bagInfoFile.Truncate; err != nil {
 		panic(err)
 	}
+	fmt.Printf("OK\n")
 
+	fmt.Printf("  * Writing bag-info.txt: ")
 	writer := bufio.NewWriter(bagInfoFile)
 	writer.Write(bagInfoBytes)
 	writer.Flush()
-
-	fmt.Printf("  * Rewriting bag-info.txt: ")
-	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
-		panic(err)
-	}
 	fmt.Printf("OK\n")
+	/*
+		fmt.Printf("  * Rewriting bag-info.txt: ")
+		if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
+			panic(err)
+		}
+
+	*/
 
 	//create new manifest object for tagmanifest-sha256.txt
 	time.Sleep(pause)
