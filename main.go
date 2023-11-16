@@ -15,7 +15,7 @@ import (
 	go_bagit "github.com/nyudlts/go-bagit"
 )
 
-const version string = "0.2.2"
+const version string = "0.2.3"
 
 var (
 	bag         string
@@ -126,7 +126,7 @@ func main() {
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	fmt.Print("Backing up bag-info.txt")
+	fmt.Print("  * Backing up bag-info.txt")
 	bagInfoLocation := filepath.Join(bag, "bag-info.txt")
 	//backup bag-info
 	backupLocation := filepath.Join(tmpLocation, "bag-info.txt")
@@ -146,6 +146,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf(" OK\n")
 
 	//getting tagset from bag-info
 	fmt.Printf("  * Creating new tag set from %s: ", bagInfoLocation)
@@ -162,7 +163,7 @@ func main() {
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
-	fmt.Println("  * Rewriting bag-info.txt with updated tag set: ")
+
 	//write the new baginfo file
 	fmt.Printf("  * Getting data as byte array: ")
 	bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
@@ -187,6 +188,7 @@ func main() {
 	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
 		panic(err)
 	}
+	fmt.Printf("OK\n")
 
 	//create new manifest object for tagmanifest-sha256.txt
 	time.Sleep(pause)
