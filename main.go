@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	go_bagit "github.com/nyudlts/go-bagit"
 	"io"
 	"log"
 	"os"
@@ -12,16 +11,15 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	go_bagit "github.com/nyudlts/go-bagit"
 )
 
-const version string = "0.2.1a"
+const version string = "0.2.2"
 
 var (
 	bag         string
-	bagFiles    = []string{}
-	tmpLocation = "/var/archivematica/ampp/tmp/"
-	tmpBagDir   string
-	uuidMatcher = regexp.MustCompile("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
+	tmpLocation string
 	woMatcher   = regexp.MustCompile("aspace_wo.tsv$")
 	tiMatcher   = regexp.MustCompile("transfer-info.txt")
 	pause       = 500 * time.Millisecond
@@ -29,6 +27,7 @@ var (
 
 func init() {
 	flag.StringVar(&bag, "bag", "", "location of bag")
+	flag.StringVar(&tmpLocation, "tmp", "", "temp location")
 }
 
 func main() {
