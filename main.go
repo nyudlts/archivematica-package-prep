@@ -49,8 +49,8 @@ func main() {
 	//check that
 	time.Sleep(pause)
 	fmt.Print("  * Checking that bag location is a directory: ")
-	if fi.IsDir() != true {
-		log.Fatal(fmt.Errorf("Location provided is not a directory"))
+	if !fi.IsDir() {
+		log.Fatal(fmt.Errorf("location provided is not a directory"))
 	}
 	fmt.Print("OK\n")
 
@@ -126,12 +126,13 @@ func main() {
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
+	fmt.Print("Backing up bag-info.txt")
 	bagInfoLocation := filepath.Join(bag, "bag-info.txt")
 	//backup bag-info
-	backupLocation := filepath.Join("/var/archivematica/tmp", "bag-info.txt")
+	backupLocation := filepath.Join(tmpLocation, "bag-info.txt")
 	backup, err := os.Create(backupLocation)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer backup.Close()
 
@@ -165,14 +166,8 @@ func main() {
 	//write the new baginfo file
 	fmt.Printf("  * Getting data as byte array: ")
 	bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
-	fmt.Println(string(bagInfoBytes))
+	//fmt.Println(string(bagInfoBytes))
 	fmt.Printf("OK\n")
-	/*
-		fmt.Printf("  * Removing bag-info.txt: ")
-		if err := os.Remove(bagInfoLocation); err != nil {
-			panic(err)
-		}
-	*/
 
 	fmt.Printf("  * Opening bag-info.txt: ")
 	bagInfoFile, err := os.Open(bagInfoLocation)
@@ -182,24 +177,16 @@ func main() {
 	defer bagInfoFile.Close()
 	fmt.Printf("OK\n")
 
-	fmt.Printf("  * bag-info.txt: ")
-	if err := bagInfoFile.Truncate; err != nil {
-		panic(err)
-	}
-	fmt.Printf("OK\n")
-
 	fmt.Printf("  * Writing bag-info.txt: ")
 	writer := bufio.NewWriter(bagInfoFile)
 	writer.Write(bagInfoBytes)
 	writer.Flush()
 	fmt.Printf("OK\n")
-	/*
-		fmt.Printf("  * Rewriting bag-info.txt: ")
-		if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
-			panic(err)
-		}
 
-	*/
+	fmt.Printf("  * Rewriting bag-info.txt: ")
+	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
+		panic(err)
+	}
 
 	//create new manifest object for tagmanifest-sha256.txt
 	time.Sleep(pause)
