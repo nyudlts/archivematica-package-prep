@@ -19,6 +19,9 @@ var singleCmd = &cobra.Command{
 		if tmpLocation == "" {
 			tmpLocation = "/tmp"
 		}
-		processAIP(aipLocation, tmpLocation)
+
+		if err := processAIP(aipLocation, tmpLocation); err != nil {
+			panic(err)
+		}
 	},
 }

@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,7 +22,7 @@ var (
 	pause     = 500 * time.Millisecond
 )
 
-func processAIP(bagLocation string, tmpLocation string) {
+func processAIP(bagLocation string, tmpLocation string) error {
 
 	fmt.Println("Running Archivematica Package Prep version", version)
 	flag.Parse()
@@ -35,7 +34,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Print("  * Checking that bag location exists: ")
 	fi, err := os.Stat(bagLocation)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	fmt.Print("OK\n")
 
@@ -43,7 +42,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	time.Sleep(pause)
 	fmt.Print("  * Checking that bag location is a directory: ")
 	if !fi.IsDir() {
-		log.Fatal(fmt.Errorf("location provided is not a directory"))
+		return err
 	}
 	fmt.Print("OK\n")
 
@@ -51,7 +50,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	time.Sleep(pause)
 	fmt.Printf("  * Validating bag at %s: ", bagLocation)
 	if err := go_bagit.ValidateBag(bagLocation, false, false); err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	fmt.Printf("OK\n")
 
@@ -64,14 +63,14 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Printf("  * Locating work order: ")
 	woPath, err := go_bagit.FindFileInBag(bagLocation, woMatcher)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
 	fmt.Printf("  * Moving work order to bag's root ")
 	if err := go_bagit.AddFileToBag(bagLocation, woPath); err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
@@ -80,7 +79,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Printf("  * Locating transfer-info.txt: ")
 	transferInfoPath, err := go_bagit.FindFileInBag(bagLocation, tiMatcher)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 	transferInfoPath = strings.ReplaceAll(transferInfoPath, bagLocation, "")
@@ -90,7 +89,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Printf("  * Creating new tag set from %s: ", transferInfoPath)
 	transferInfo, err := go_bagit.NewTagSet(transferInfoPath, bagLocation)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
@@ -99,7 +98,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Printf("  * Adding hostname to tag set: ")
 	hostname, err := os.Hostname()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	transferInfo.Tags["nyu-dl-hostname"] = hostname
 	fmt.Printf("OK\n")
@@ -109,11 +108,11 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Printf("  * Adding bag's path to tag set: ")
 	path, err := filepath.Abs(bagLocation)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	path, err = filepath.EvalSymlinks(path)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	transferInfo.Tags["nyu-dl-pathname"] = path
 	fmt.Printf("OK\n")
@@ -125,19 +124,19 @@ func processAIP(bagLocation string, tmpLocation string) {
 	backupLocation := filepath.Join(tmpLocation, "bag-info.txt")
 	backup, err := os.Create(backupLocation)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer backup.Close()
 
 	source, err := os.Open(bagInfoLocation)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer source.Close()
 
 	_, err = io.Copy(backup, source)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	fmt.Printf(" OK\n")
 
@@ -145,7 +144,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Printf("  * Creating new tag set from %s: ", bagInfoLocation)
 	bagInfo, err := go_bagit.NewTagSet("bag-info.txt", bagLocation)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
@@ -160,13 +159,12 @@ func processAIP(bagLocation string, tmpLocation string) {
 	//write the new baginfo file
 	fmt.Printf("  * Getting data as byte array: ")
 	bagInfoBytes := bagInfo.GetTagSetAsByteSlice()
-	//fmt.Println(string(bagInfoBytes))
 	fmt.Printf("OK\n")
 
 	fmt.Printf("  * Opening bag-info.txt: ")
 	bagInfoFile, err := os.Open(bagInfoLocation)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer bagInfoFile.Close()
 	fmt.Printf("OK\n")
@@ -179,7 +177,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 
 	fmt.Printf("  * Rewriting bag-info.txt: ")
 	if err := os.WriteFile(bagInfoLocation, bagInfoBytes, 0777); err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
@@ -188,7 +186,7 @@ func processAIP(bagLocation string, tmpLocation string) {
 	fmt.Printf("  * Creating new manifest for tagmanifest-sha256.txt: ")
 	tagManifest, err := go_bagit.NewManifest(bagLocation, "tagmanifest-sha256.txt")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
@@ -196,14 +194,14 @@ func processAIP(bagLocation string, tmpLocation string) {
 	time.Sleep(pause)
 	fmt.Printf("  * Updating checksum for bag-info.txt in tagmanifest-sha256.txt: ")
 	if err := tagManifest.UpdateManifest("bag-info.txt"); err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
 	time.Sleep(pause)
 	fmt.Printf("  * Rewriting tagmanifest-sha256.txt: ")
 	if err := tagManifest.Serialize(); err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
@@ -211,10 +209,10 @@ func processAIP(bagLocation string, tmpLocation string) {
 	time.Sleep(pause)
 	fmt.Printf("\nValidating the updated bag: ")
 	if err := go_bagit.ValidateBag(bagLocation, false, false); err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Printf("OK\n")
 
 	fmt.Println("\nPackage preparation complete")
-	os.Exit(0)
+	return nil
 }
