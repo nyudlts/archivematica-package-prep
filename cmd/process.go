@@ -14,8 +14,6 @@ import (
 	go_bagit "github.com/nyudlts/go-bagit"
 )
 
-const version string = "0.2.4"
-
 var (
 	woMatcher = regexp.MustCompile("aspace_wo.tsv$")
 	tiMatcher = regexp.MustCompile("transfer-info.txt")
@@ -24,7 +22,6 @@ var (
 
 func processAIP(bagLocation string, tmpLocation string) error {
 
-	fmt.Println("Running Archivematica Package Prep version", version)
 	flag.Parse()
 
 	time.Sleep(pause)
