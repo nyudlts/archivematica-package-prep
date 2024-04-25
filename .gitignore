@@ -2,3 +2,8 @@ ampp
 ampp.exe
 amatica-transfers.txt
 tmp/*
+staging/*
+lab/*
+*ampp-list.log
+*ampp-results.txt
+test/*
