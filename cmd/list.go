@@ -44,14 +44,14 @@ func processList() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(fi.Name())
 
 		//set copy options
 		options.PreserveTimes = true
-		options.PermissionControl = cp.AddPermission(0644)
+		options.PermissionControl = cp.AddPermission(0755)
 
 		//copy the directory to the staging area
 		dst := filepath.Join(stagingLoc, fi.Name())
+		fmt.Printf("\nCopying package from %s to %s\n", aipLoc, dst)
 		if err := cp.Copy(aipLoc, dst, options); err != nil {
 			panic(err)
 		}
@@ -61,8 +61,18 @@ func processList() {
 			tmpLocation = "/tmp"
 		}
 
+		outputFile, err := os.Create("ampp-results.txt")
+		if err != nil {
+			panic(err)
+		}
+		defer outputFile.Close()
+		writer := bufio.NewWriter(outputFile)
+
+		fmt.Printf("\nUpdating package at %s\n", dst)
 		if err := processAIP(dst, tmpLocation); err != nil {
-			fmt.Println(err.Error())
+			writer.WriteString(dst + " " + err.Error())
+		} else {
+			writer.WriteString(dst + " " + "SUCCESS")
 		}
 
 	}
