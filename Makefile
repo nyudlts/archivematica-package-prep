@@ -1,6 +1,9 @@
+tidy:
+	go mod tidy
+
 build:
 	go mod tidy
-	go build -o ampp
+	go build -o build/ampp
 
 install:
-	cp ampp /usr/local/bin
+	sudo cp build/ampp /usr/local/bin/

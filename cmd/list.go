@@ -32,63 +32,87 @@ var listCmd = &cobra.Command{
 }
 
 func processList() {
-	var err error
-	logFile, err = os.Create("ampp-list.log")
-	if err != nil {
-		panic(err)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
-
 	fmt.Println("Running Archivematica Package Prep version", version)
 	log.Println("- INFO - Running Archivematica Package Prep version", version)
 
-	fmt.Println("Parsing aip-file:", aipFileLoc)
-	log.Println("- INFO - Parsing aip-file:", aipFileLoc)
+	fmt.Println("\nInitial setup")
+	var err error
+	logFileLocation := filepath.Join(stagingLoc, logFileName)
+	fmt.Printf("  * Creating log file %s: ", logFileLocation)
+
+	logFile, err = os.Create(logFileLocation)
+	if err != nil {
+		fmt.Printf("KO\t%s\n", err.Error())
+		log.Fatalf("- FATAL - %s", err.Error())
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+	fmt.Println("OK")
+
+	fmt.Printf("  * Opening aip-file %s: ", aipFileLoc)
+	log.Println("- INFO -  Opening aip-file", aipFileLoc)
 
 	aipFile, err := os.Open(aipFileLoc)
 	if err != nil {
-		log.Fatal("- FATAL - ", err.Error())
+		fmt.Printf("KO\t%s\n", err.Error())
+		log.Fatalf("- FATAL - %s", err.Error())
 	}
-	defer aipFile.Close()
+	fmt.Println("OK")
 	scanner := bufio.NewScanner(aipFile)
+
+	summaryFileLocation := filepath.Join(stagingLoc, "ampp-results.txt")
+	fmt.Printf("  * Creating output results file %s: ", summaryFileLocation)
+	summaryFile, err := os.Create(summaryFileLocation)
+	if err != nil {
+		fmt.Printf("KO\t%s\n", err.Error())
+		log.Fatalf("- FATAL - %s", err.Error())
+	}
+	defer summaryFile.Close()
+	fmt.Println("OK")
+	writer := bufio.NewWriter(summaryFile)
+
+	//set copy options
+	options.PreserveTimes = true
+	options.PermissionControl = cp.AddPermission(0755)
+
+	if tmpLocation == "" {
+		tmpLocation = "/tmp"
+	}
+
 	for scanner.Scan() {
 		aipLoc := scanner.Text()
+		fmt.Printf("\nProcessing AIP %s\n", filepath.Base(aipLoc))
+		log.Printf("- INFO - processing AIP %s", filepath.Base(aipLoc))
+
+		//check the aip exists
+		fmt.Printf("Checking that AIP exists at %s: ", aipLoc)
 		fi, err := os.Stat(aipLoc)
 		if err != nil {
-			panic(err)
+			fmt.Printf("KO\t%s\n", err.Error())
+			log.Fatalf("- FATAL - %s", err.Error())
 		}
-
-		//set copy options
-		options.PreserveTimes = true
-		options.PermissionControl = cp.AddPermission(0755)
+		fmt.Println("OK")
 
 		//copy the directory to the staging area
 		dst := filepath.Join(stagingLoc, fi.Name())
-		fmt.Printf("\nCopying package from %s to %s\n", aipLoc, dst)
-		log.Printf("- INFO - copying package from %s to %s\n", aipLoc, dst)
+		fmt.Printf("Copying AIP %s to %s: ", filepath.Base(aipLoc), dst)
+		log.Printf("- INFO - copying AIP %s to %s\n", filepath.Base(aipLoc), dst)
 		if err := cp.Copy(aipLoc, dst, options); err != nil {
-			panic(err)
+			fmt.Printf("KO%s\n", err.Error())
+			log.Fatalf("- FATAL - %s", err.Error())
 		}
+		fmt.Println("OK")
 
 		//run the update process
-		if tmpLocation == "" {
-			tmpLocation = "/tmp"
-		}
-
-		outputFile, err := os.Create("ampp-results.txt")
-		if err != nil {
-			panic(err)
-		}
-		defer outputFile.Close()
-		writer := bufio.NewWriter(outputFile)
-
-		fmt.Printf("\nUpdating package at %s\n", dst)
-		log.Printf("- INFO - Updating package at %s\n", dst)
 		if err := processAIP(dst, tmpLocation); err != nil {
-			writer.WriteString(dst + " " + err.Error())
+			writer.WriteString(fmt.Sprintf("%s\t%s\n", dst, err.Error()))
+			writer.Flush()
+			log.Fatalf("- FATAL - %s", err.Error())
 		} else {
-			writer.WriteString(dst + " " + "SUCCESS")
+			writer.WriteString(fmt.Sprintf("%s\tSUCCESS\n", dst))
+			writer.Flush()
 		}
+		writer.Flush()
 	}
+
 }
