@@ -269,41 +269,65 @@ func processAIP(bagLocation string, tmpLocation string) error {
 }
 
 func validateTransferInfo(transferInfo go_bagit.TagSet) error {
-	for tag, value := range transferInfo.Tags {
-		switch tag {
-		case "nyu-dl-transfer-type":
-			{
-				if !(value == "AIP" || value == "DIP") {
-					return fmt.Errorf("nyu-dl-transfer-type must be equal to AIP or DIP was %s", value)
-				}
-			}
-		case "nyu-dl-rstar-collection-id":
-			{
-				if _, err := uuid.Parse(value); err != nil {
-					return err
-				}
-			}
-		case "External-Identifier":
-			{
-				if _, err := uuid.Parse(value); err != nil {
-					return err
-				}
-			}
-		case "nyu-dl-project-name:":
-			{
-				if !partnerAndCode.MatchString(value) {
-					return fmt.Errorf("%s is an invalid partner/collection code", value)
-				}
-			}
-		case "Internal-Sender-Identifier":
-			{
-				if !partnerAndCode.MatchString(value) {
-					return fmt.Errorf("%s is an invalid partner/collection code", value)
-				}
-			}
-		default:
-		}
+	//ensure there is an rstar-ID
+	rstarID := transferInfo.Tags["nyu-dl-rstar-collection-id"]
+	if rstarID == "" {
+		return fmt.Errorf("bag does not contain a rstar collection ID")
 	}
+
+	//ensure that the rstar uuid is valid
+	if _, err := uuid.Parse(rstarID); err != nil {
+		return err
+	}
+	log.Println("- INFO - bag has a valid uuid")
+
+	//ensure that the project name is valid
+	projectName := transferInfo.Tags["nyu-dl-project-name"]
+	if projectName == "" {
+		return fmt.Errorf("bag does not contain a project name")
+	}
+
+	if !partnerAndCode.MatchString(projectName) {
+		return fmt.Errorf("%s is an invalid partner/collection code", projectName)
+	}
+	log.Println("- INFO - bag has a valid project name")
+
+	/*
+
+		for tag, value := range transferInfo.Tags {
+			switch tag {
+			case "nyu-dl-transfer-type":
+				{
+					if !(value == "AIP" || value == "DIP") {
+						return fmt.Errorf("nyu-dl-transfer-type must be equal to AIP or DIP was %s", value)
+					}
+				}
+			case "nyu-dl-rstar-collection-id":
+				{
+					if _, err := uuid.Parse(value); err != nil {
+						return err
+					}
+				}
+			case "External-Identifier":
+				{
+					if _, err := uuid.Parse(value); err != nil {
+						return err
+					}
+				}
+			case "nyu-dl-project-name:":
+				{
+
+				}
+			case "Internal-Sender-Identifier":
+				{
+					if !partnerAndCode.MatchString(value) {
+						return fmt.Errorf("%s is an invalid partner/collection code", value)
+					}
+				}
+			default:
+			}
+		}
+	*/
 	return nil
 
 }
