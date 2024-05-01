@@ -95,7 +95,7 @@ func processList() {
 
 		//copy the directory to the staging area
 		dst := filepath.Join(stagingLoc, fi.Name())
-		fmt.Printf("Copying AIP %s to %s: ", filepath.Base(aipLoc), dst)
+		fmt.Printf("Copying AIP %s to %s: ", filepath.Base(aipLoc), stagingLoc)
 		log.Printf("- INFO - copying AIP %s to %s\n", filepath.Base(aipLoc), dst)
 		if err := cp.Copy(aipLoc, dst, options); err != nil {
 			fmt.Printf("KO%s\n", err.Error())

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nyudlts/go-aspace"
 	go_bagit "github.com/nyudlts/go-bagit"
 )
@@ -96,7 +97,7 @@ func processAIP(bagLocation string, tmpLocation string) error {
 
 	//create a tag set from transfer-info.txt
 	time.Sleep(pause)
-	fmt.Printf("  * Creating new tag set from %s: ", transferInfoPath)
+	fmt.Printf("  * Creating new tag set from %s: ", filepath.Base(transferInfoPath))
 	transferInfoPath = strings.ReplaceAll(transferInfoPath, bagLocation, "")
 	transferInfo, err := go_bagit.NewTagSet(transferInfoPath, bagLocation)
 	if err != nil {
@@ -274,6 +275,30 @@ func validateTransferInfo(transferInfo go_bagit.TagSet) error {
 			{
 				if !(value == "AIP" || value == "DIP") {
 					return fmt.Errorf("nyu-dl-transfer-type must be equal to AIP or DIP was %s", value)
+				}
+			}
+		case "nyu-dl-rstar-collection-id":
+			{
+				if _, err := uuid.Parse(value); err != nil {
+					return err
+				}
+			}
+		case "External-Identifier":
+			{
+				if _, err := uuid.Parse(value); err != nil {
+					return err
+				}
+			}
+		case "nyu-dl-project-name:":
+			{
+				if !partnerAndCode.MatchString(value) {
+					return fmt.Errorf("%s is an invalid partner/collection code", value)
+				}
+			}
+		case "Internal-Sender-Identifier":
+			{
+				if !partnerAndCode.MatchString(value) {
+					return fmt.Errorf("%s is an invalid partner/collection code", value)
 				}
 			}
 		default:
